@@ -2,6 +2,7 @@ blueprints = custom_target(
   'blueprints',
   input: files(
     'ui/audio_devices_expander.blp',
+    'ui/audio_device_row.blp',
     'ui/window.blp',
   ),
   output: '.',

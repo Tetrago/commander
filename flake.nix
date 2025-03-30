@@ -41,7 +41,7 @@
 
         cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
           inherit src pname version;
-          hash = "sha256-R+KAtCsDFzEWFaJEY01eJUK38Cx2qrxVvhI1x3X8e90=";
+          hash = "sha256-VKh+iI3w6K+dTxK5DL+7vqKQBMaGQFZZbjS38ONLYSg=";
         };
 
         nativeBuildInputs = with pkgs; [
@@ -51,12 +51,14 @@
           blueprint-compiler
           pkg-config
           rustPlatform.cargoSetupHook
+          rustPlatform.bindgenHook
           wrapGAppsHook4
         ];
 
         buildInputs = with pkgs; [
           gtk4
           libadwaita
+          pipewire
         ];
       };
     };

@@ -1,3 +1,4 @@
+use crate::audio::AudioDeviceType;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib;
@@ -9,7 +10,7 @@ mod imp {
 
     #[derive(Default, glib::Properties, gtk::CompositeTemplate)]
     #[properties(wrapper_type = super::AudioDevicesExpander)]
-    #[template(resource = "/io/github/tetrago/commander/audio_device_row.ui")]
+    #[template(resource = "/io/github/tetrago/commander/audio_devices_expander.ui")]
     pub struct AudioDevicesExpander {
         #[property(get, construct_only, builder(AudioDeviceType::default()))]
         pub device_type: Cell<AudioDeviceType>,
@@ -39,8 +40,8 @@ mod imp {
             self.parent_constructed();
 
             let (title, icon) = match self.device_type.get() {
-                AudioDeviceType::Playback => ("Playback", "audio-speakers-symbolic"),
-                AudioDeviceType::Recording => ("Recording", "audio-input-microphone-symbolic"),
+                AudioDeviceType::Sink => ("Sink", "audio-speakers-symbolic"),
+                AudioDeviceType::Source => ("Source", "audio-input-microphone-symbolic"),
             };
 
             self.obj().set_title(title);
@@ -52,14 +53,6 @@ mod imp {
     impl ListBoxRowImpl for AudioDevicesExpander {}
     impl PreferencesRowImpl for AudioDevicesExpander {}
     impl ExpanderRowImpl for AudioDevicesExpander {}
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum)]
-#[enum_type(name = "AudioDeviceType")]
-pub enum AudioDeviceType {
-    #[default]
-    Playback,
-    Recording,
 }
 
 glib::wrapper! {

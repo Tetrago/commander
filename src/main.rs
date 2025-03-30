@@ -1,6 +1,8 @@
 use adw::prelude::*;
 use gtk::{gio, glib};
 
+mod audio;
+mod audio_device_row;
 mod audio_devices_expander;
 mod config;
 mod window;
@@ -12,6 +14,14 @@ fn main() -> glib::ExitCode {
         &gio::Resource::load(PKGDATADIR.to_owned() + "/commander.gresource")
             .expect("Unable to find commander.gresource"),
     );
+
+    let mut dev = audio::Audio::new();
+    dev.process_events();
+
+    for device in dev.get_devices() {
+        println!("{:?}", device);
+    }
+    drop(dev);
 
     audio_devices_expander::AudioDevicesExpander::static_type();
 

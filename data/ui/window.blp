@@ -71,11 +71,11 @@ template $CommanderWindow : Adw.ApplicationWindow {
               description: _("Change the default audio devices");
 
               $AudioDevicesExpander {
-                device-type: playback;
+                device-type: sink;
               }
 
               $AudioDevicesExpander {
-                device-type: recording;
+                device-type: source;
               }
             }
           };
