@@ -1,0 +1,99 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $CommanderWindow : Adw.ApplicationWindow {
+  title: _("Commander");
+
+  content: Adw.OverlaySplitView overlay_split_view {
+    sidebar-width-fraction: 0.3;
+
+    sidebar: Adw.ToolbarView {
+      [top]
+      Adw.HeaderBar {
+        [title]
+        Adw.WindowTitle {
+          title: _("Commander");
+        }
+      }
+
+      content: Adw.PreferencesPage {
+        Adw.PreferencesGroup {
+          Adw.ActionRow {
+            title: _("Audio");
+            activatable: true;
+
+            [prefix]
+            Image {
+              icon-name: "audio-volume-high-symbolic";
+            }
+
+            activated => $on_audio_activated(content_stack);
+          }
+
+          Adw.ActionRow {
+            title: _("Display");
+            activatable: true;
+
+            [prefix]
+            Image {
+              icon-name: "preferences-desktop-display-symbolic";
+            }
+
+            activated => $on_display_activated(content_stack);
+          }
+        }
+      };
+
+    };
+
+    content: Adw.ToolbarView {
+      [top]
+      Adw.HeaderBar {
+        [start]
+        Button toggle_sidebar_button {
+          tooltip-text: _("Toggle Sidebar");
+          clicked => $toggle_sidebar(overlay_split_view);
+        }
+
+        [title]
+        Adw.WindowTitle content_title {}
+      }
+
+      content: Adw.ViewStack content_stack {
+        Adw.ViewStackPage {
+          name: "audio";
+          title: _("Audio");
+          icon-name: "audio-volume-high-symbolic";
+
+          child: Adw.PreferencesPage {
+            Adw.PreferencesGroup {
+              title: _("Devices");
+              description: _("Change the default audio devices");
+
+              $AudioDevicesExpander {
+                device-type: playback;
+              }
+
+              $AudioDevicesExpander {
+                device-type: recording;
+              }
+            }
+          };
+        }
+
+        Adw.ViewStackPage {
+          name: "display";
+          title: _("Display");
+          icon-name: "preferences-desktop-display-symbolic";
+
+          child: Adw.PreferencesPage {
+            Adw.PreferencesGroup {
+              title: _("Monitors");
+            }
+          };
+        }
+      };
+    };
+  };
+}
+

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+    <gresource prefix="/io/github/tetrago/commander">
+        <file alias="audio_device_row.ui" preprocess="xml-stripblanks">ui/audio_devices_expander.ui</file>
+        <file alias="window.ui" preprocess="xml-stripblanks">ui/window.ui</file>
+    </gresource>
+</gresources>
