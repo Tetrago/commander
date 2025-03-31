@@ -16,8 +16,6 @@ fn main() -> glib::ExitCode {
     );
 
     let mut dev = audio::Audio::new();
-    dev.process_events();
-
     for device in dev.get_devices() {
         println!("{:?}", device);
     }
