@@ -22,22 +22,6 @@ mod imp {
         pub toggle_sidebar_button: TemplateChild<gtk::Button>,
     }
 
-    #[glib::object_subclass]
-    impl ObjectSubclass for Window {
-        const NAME: &'static str = "CommanderWindow";
-        type Type = super::Window;
-        type ParentType = adw::ApplicationWindow;
-
-        fn class_init(klass: &mut Self::Class) {
-            klass.bind_template();
-            klass.bind_template_callbacks();
-        }
-
-        fn instance_init(obj: &InitializingObject<Self>) {
-            obj.init_template();
-        }
-    }
-
     #[gtk::template_callbacks]
     impl Window {
         #[template_callback]
@@ -53,6 +37,22 @@ mod imp {
         #[template_callback]
         fn toggle_sidebar(view: &adw::OverlaySplitView) {
             view.set_show_sidebar(!view.shows_sidebar());
+        }
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for Window {
+        const NAME: &'static str = "CommanderWindow";
+        type Type = super::Window;
+        type ParentType = adw::ApplicationWindow;
+
+        fn class_init(klass: &mut Self::Class) {
+            klass.bind_template();
+            klass.bind_template_callbacks();
+        }
+
+        fn instance_init(obj: &InitializingObject<Self>) {
+            obj.init_template();
         }
     }
 
@@ -87,6 +87,10 @@ mod imp {
 
             self.overlay_split_view.set_show_sidebar(true);
             self.content_stack.set_visible_child_name("audio");
+            self.content_stack
+                .visible_child()
+                .and_then(|child| self.content_stack.page(&child).title())
+                .map(|page_title| self.content_title.set_title(&page_title));
             self.toggle_sidebar_button
                 .set_icon_name("sidebar-hide-symbolic");
         }

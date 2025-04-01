@@ -2,11 +2,11 @@ using Gtk 4.0;
 using Adw 1;
 
 template $AudioDeviceRow : Adw.ActionRow {
-  title: bind template.device_name;
-  activatableWidget: check_button;
+  title: bind template.device-name;
+  activatable-widget: check_button;
 
   [prefix]
   CheckButton check_button {
-    toggled => $toggled(template);
+    toggled => $on_toggled(template);
   }
 }

@@ -1,188 +1,275 @@
 use gtk::glib;
-use pipewire::{context::Context, main_loop::MainLoop, metadata, types::ObjectType};
+use pipewire::{
+    context::Context,
+    main_loop::MainLoop,
+    metadata::{Metadata, MetadataListener},
+    types::ObjectType,
+};
+use serde_json::json;
 use std::{
     cell::Cell,
+    cell::RefCell,
     collections::HashMap,
-    sync::{Arc, Barrier, mpsc},
+    rc::{Rc, Weak},
     thread,
 };
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, glib::Enum)]
-#[enum_type(name = "AudioDeviceType")]
-pub enum AudioDeviceType {
+#[enum_type(name = "DeviceType")]
+pub enum DeviceType {
     #[default]
     Sink,
     Source,
 }
 
-#[derive(Debug, Eq)]
-pub struct AudioDevice {
-    id: u32,
-    name: String,
-    device_type: AudioDeviceType,
+#[derive(Clone, Debug, Default, Eq)]
+pub struct Device {
+    pub id: u32,
+    pub name: String,
+    pub description: String,
+    pub device_type: DeviceType,
 }
 
-impl AudioDevice {
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn device_type(&self) -> AudioDeviceType {
-        self.device_type
-    }
-}
-
-impl PartialEq for AudioDevice {
+impl PartialEq for Device {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl std::hash::Hash for AudioDevice {
+impl std::hash::Hash for Device {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
 }
 
-#[derive(Debug)]
+pub enum Event {
+    DeviceAdded(Device),
+    DeviceRemoved(Device),
+    DefaultDeviceChanged(Device),
+}
+
 enum Message {
-    DeviceAdded(AudioDevice),
+    DeviceAdded(Device),
     DeviceRemoved(u32),
-    DefaultDeviceChanged(AudioDeviceType, u32),
+    DefaultDeviceChanged(DeviceType, String),
 }
 
 #[derive(Debug)]
-struct Terminate;
+enum Command {
+    MakeDefault(Device),
+    Terminate,
+}
+
+pub struct Listener(
+    Weak<RefCell<Vec<Rc<dyn Fn(&Event)>>>>,
+    Weak<dyn Fn(&Event) + 'static>,
+);
+
+impl Drop for Listener {
+    fn drop(&mut self) {
+        if let Some(listeners) = self.0.upgrade() {
+            listeners
+                .borrow_mut()
+                .retain(|elem| !self.1.ptr_eq(&Rc::downgrade(elem)));
+        }
+    }
+}
 
 pub struct Audio {
     thread: Option<thread::JoinHandle<()>>,
-    receiver: mpsc::Receiver<Message>,
-    sender: pipewire::channel::Sender<Terminate>,
-    devices: HashMap<u32, AudioDevice>,
-    defaults: HashMap<AudioDeviceType, u32>,
+    sender: pipewire::channel::Sender<Command>,
+    listeners: Rc<RefCell<Vec<Rc<dyn Fn(&Event)>>>>,
+    devices: HashMap<u32, Device>,
+    defaults: HashMap<DeviceType, u32>,
 }
 
 impl Audio {
-    pub fn new() -> Self {
-        let (main_sender, main_receiver) = mpsc::channel();
-        let (pw_sender, pw_receiver) = pipewire::channel::channel();
+    pub fn new() -> Rc<RefCell<Self>> {
+        let (tx, rx) = async_channel::unbounded::<Message>();
+        let (sender, receiver) = pipewire::channel::channel();
 
-        let barrier = Arc::new(Barrier::new(2));
+        let thread = Some(thread::spawn(move || Self::thread(tx, receiver)));
 
-        let thread = Some(thread::spawn({
-            let barrier = barrier.clone();
-            move || Self::thread(main_sender, pw_receiver, barrier)
-        }));
-
-        let mut audio = Self {
+        let audio = Rc::new(RefCell::new(Self {
             thread,
-            receiver: main_receiver,
-            sender: pw_sender,
+            sender,
+            listeners: Rc::default(),
             devices: HashMap::new(),
             defaults: HashMap::new(),
-        };
+        }));
 
-        barrier.wait();
-        audio.process_events();
+        glib::timeout_add_local(std::time::Duration::from_millis(100), {
+            let audio = Rc::downgrade(&audio);
+
+            move || {
+                if let Some(audio) = audio.upgrade() {
+                    let mut audio = audio.borrow_mut();
+
+                    while let Ok(msg) = rx.try_recv() {
+                        if let Some(event) = match msg {
+                            Message::DeviceAdded(ref device) => {
+                                let device = device.clone();
+                                _ = audio.devices.insert(device.id, device.clone());
+                                Some(Event::DeviceAdded(device))
+                            }
+                            Message::DeviceRemoved(id) => audio
+                                .devices
+                                .remove(&id)
+                                .map(|device| Event::DeviceRemoved(device)),
+                            Message::DefaultDeviceChanged(device_type, ref name) => audio
+                                .devices
+                                .iter()
+                                .filter_map(|(_, device)| {
+                                    if device.name == *name {
+                                        Some(device.clone())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .next()
+                                .map(|device| {
+                                    audio.defaults.insert(device_type, device.id);
+                                    Event::DefaultDeviceChanged(device)
+                                }),
+                        } {
+                            audio.listeners.borrow().iter().for_each(|f| f(&event));
+                        }
+                    }
+
+                    gtk::glib::ControlFlow::Continue
+                } else {
+                    gtk::glib::ControlFlow::Break
+                }
+            }
+        });
+
         audio
     }
 
-    pub fn process_events(&mut self) {
-        while let Ok(msg) = self.receiver.try_recv() {
-            match msg {
-                Message::DeviceAdded(device) => _ = self.devices.insert(device.id, device),
-                Message::DeviceRemoved(id) => _ = self.devices.remove(&id),
-                Message::DefaultDeviceChanged(device_type, id) => {
-                    println!("Changed!");
-                    _ = self.defaults.insert(device_type, id)
-                }
-            }
-        }
+    pub fn set_default_device(&self, device: &Device) {
+        self.sender
+            .send(Command::MakeDefault(device.clone()))
+            .unwrap();
     }
 
-    pub fn get_devices(&self) -> Vec<&AudioDevice> {
-        self.devices.values().collect()
-    }
+    pub fn add_listener<T>(&self, listener: T) -> Listener
+    where
+        T: Fn(&Event) + 'static,
+    {
+        self.devices
+            .iter()
+            .for_each(|(_, device)| listener(&Event::DeviceAdded(device.clone())));
 
-    pub fn get_default_device(&self, device_type: AudioDeviceType) -> Option<&AudioDevice> {
         self.defaults
-            .get(&device_type)
-            .map(|id| self.devices.get(id).unwrap())
+            .iter()
+            .map(|(device_type, id)| (device_type, self.devices.get(id).unwrap()))
+            .for_each(|(_, device)| listener(&Event::DefaultDeviceChanged(device.clone())));
+
+        let listener = Rc::new(listener);
+        self.listeners.borrow_mut().push(listener.clone());
+
+        Listener(
+            Rc::downgrade(&self.listeners),
+            Rc::downgrade(&listener) as Weak<dyn Fn(&Event) + 'static>,
+        )
     }
 
     fn thread(
-        sender: mpsc::Sender<Message>,
-        receiver: pipewire::channel::Receiver<Terminate>,
-        barrier: Arc<Barrier>,
+        sender: async_channel::Sender<Message>,
+        receiver: pipewire::channel::Receiver<Command>,
     ) {
         let main_loop = MainLoop::new(None).expect("Failed to create main loop");
         let context = Context::new(&main_loop).expect("Failed to create context");
         let core = context.connect(None).expect("Failed to create core");
-        let registry = core.get_registry().expect("Failed to get registry");
-
-        let _sync = core
-            .add_listener_local()
-            .done({
-                let sync = core.sync(0).expect("Sync failed");
-
-                move |id, seq| {
-                    if id == pipewire::core::PW_ID_CORE && seq == sync {
-                        barrier.wait();
-                    }
-                }
-            })
-            .register();
+        let registry = Rc::new(core.get_registry().expect("Failed to get registry"));
+        let metadata: Rc<RefCell<Option<Metadata>>> = Rc::default();
 
         let _listener = registry
             .add_listener_local()
             .global({
-                let registry = core.get_registry().unwrap();
                 let sender = sender.clone();
-                let metadata_listener: Cell<Option<metadata::MetadataListener>> = Cell::new(None);
+                let registry = registry.clone();
+
+                let metadata = metadata.clone();
+                let metadata_listener: Cell<Option<MetadataListener>> = Cell::default();
 
                 move |global| {
                     if let Some(props) = global.props {
                         if global.type_ == ObjectType::Node {
                             if let Some(media_class) = props.get("media.class") {
                                 if let Some(device_type) = if media_class.contains("Source") {
-                                    Some(AudioDeviceType::Source)
+                                    Some(DeviceType::Source)
                                 } else if media_class.contains("Sink") {
-                                    Some(AudioDeviceType::Sink)
+                                    Some(DeviceType::Sink)
                                 } else {
                                     None
                                 } {
-                                    let name = props
+                                    let name =
+                                        props.get("node.name").unwrap_or("Unknown").to_string();
+
+                                    let description = props
                                         .get("node.description")
                                         .unwrap_or("Unknown")
                                         .to_string();
 
                                     sender
-                                        .send(Message::DeviceAdded(AudioDevice {
+                                        .try_send(Message::DeviceAdded(Device {
                                             id: global.id,
                                             name,
+                                            description,
                                             device_type,
                                         }))
                                         .unwrap();
                                 }
                             }
                         } else if global.type_ == ObjectType::Metadata {
-                            if props
-                                .get("metadata.name")
-                                .map_or(true, |name| name != "default")
-                            {
+                            if props.get("metadata.name") != Some("default") {
                                 return;
                             }
 
-                            if let Ok(metadata) = registry.bind::<metadata::Metadata, _>(global) {
+                            if let Ok(meta) = registry.bind::<Metadata, _>(global) {
                                 metadata_listener.set(Some(
-                                    metadata
-                                        .add_listener_local()
-                                        .property(move |_, key, _, value| {
-                                            println!("{:?} {:?}", key, value);
-                                            0
+                                    meta.add_listener_local()
+                                        .property({
+                                            let sender = sender.clone();
+
+                                            move |_, key, _, value| {
+                                                if let Some(device_type) = match key {
+                                                    Some("default.audio.sink") => {
+                                                        Some(DeviceType::Sink)
+                                                    }
+                                                    Some("default.audio.source") => {
+                                                        Some(DeviceType::Source)
+                                                    }
+                                                    _ => None,
+                                                } {
+                                                    if let Some(value) = value.map_or(None, |v| {
+                                                        serde_json::from_str(v).ok()
+                                                            as Option<serde_json::Value>
+                                                    }) {
+                                                        if let Some(name) = value["name"]
+                                                            .as_str()
+                                                            .map(str::to_owned)
+                                                        {
+                                                            sender
+                                                                .try_send(
+                                                                    Message::DefaultDeviceChanged(
+                                                                        device_type,
+                                                                        name,
+                                                                    ),
+                                                                )
+                                                                .unwrap();
+                                                        }
+                                                    }
+                                                }
+
+                                                0
+                                            }
                                         })
                                         .register(),
                                 ));
+
+                                metadata.replace(Some(meta));
                             }
                         }
                     }
@@ -190,15 +277,32 @@ impl Audio {
             })
             .global_remove({
                 let sender = sender.clone();
-                move |id| {
-                    sender.send(Message::DeviceRemoved(id)).unwrap();
-                }
+                move |id| sender.try_send(Message::DeviceRemoved(id)).unwrap()
             })
             .register();
 
         let _receiver = receiver.attach(main_loop.loop_(), {
             let main_loop = main_loop.clone();
-            move |_| main_loop.quit()
+            let metadata = metadata.clone();
+
+            move |command| match command {
+                Command::MakeDefault(device) => {
+                    if let Some(metadata) = metadata.borrow().as_ref() {
+                        let data = json!({"name": device.name});
+
+                        metadata.set_property(
+                            0,
+                            match device.device_type {
+                                DeviceType::Sink => "default.audio.sink",
+                                DeviceType::Source => "default.audio.source",
+                            },
+                            Some("Spa:String:JSON"),
+                            Some(&data.to_string()),
+                        );
+                    }
+                }
+                Command::Terminate => main_loop.quit(),
+            }
         });
 
         main_loop.run();
@@ -207,7 +311,7 @@ impl Audio {
 
 impl Drop for Audio {
     fn drop(&mut self) {
-        self.sender.send(Terminate).unwrap();
+        self.sender.send(Command::Terminate).unwrap();
 
         if let Some(thread) = self.thread.take() {
             thread.join().unwrap();
