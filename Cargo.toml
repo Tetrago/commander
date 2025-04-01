@@ -9,12 +9,9 @@ pipewire = "0.8.0"
 [dependencies.gtk]
 version = "0.9.6"
 package = "gtk4"
-features = ["v4_16"]
+features = ["v4_16", "blueprint"]
 
 [dependencies.adw]
 version = "0.7.2"
 package = "libadwaita"
 features = ["v1_6"]
-
-[build-dependencies]
-gio = "0.20.9"

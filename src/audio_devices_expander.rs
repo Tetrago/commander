@@ -10,7 +10,7 @@ mod imp {
 
     #[derive(Default, glib::Properties, gtk::CompositeTemplate)]
     #[properties(wrapper_type = super::AudioDevicesExpander)]
-    #[template(resource = "/io/github/tetrago/commander/audio_devices_expander.ui")]
+    #[template(file = "ui/audio_devices_expander.blp")]
     pub struct AudioDevicesExpander {
         #[property(get, construct_only, builder(AudioDeviceType::default()))]
         pub device_type: Cell<AudioDeviceType>,

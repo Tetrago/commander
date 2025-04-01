@@ -9,7 +9,7 @@ mod imp {
 
     #[derive(Default, glib::Properties, gtk::CompositeTemplate)]
     #[properties(wrapper_type = super::AudioDeviceRow)]
-    #[template(resource = "/io/github/tetrago/commander/audio_device_row.ui")]
+    #[template(file = "ui/audio_device_row.blp")]
     pub struct AudioDeviceRow {
         #[property(get, construct_only)]
         pub device_name: RefCell<String>,

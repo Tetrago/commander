@@ -7,7 +7,7 @@ mod imp {
     use glib::subclass::InitializingObject;
 
     #[derive(Default, gtk::CompositeTemplate)]
-    #[template(resource = "/io/github/tetrago/commander/window.ui")]
+    #[template(file = "ui/window.blp")]
     pub struct Window {
         #[template_child]
         pub overlay_split_view: TemplateChild<adw::OverlaySplitView>,

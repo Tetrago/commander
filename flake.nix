@@ -28,38 +28,13 @@
           pkg-config
           gtk4
           libadwaita
-        ];
-
-        RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
-      };
-
-      packages.${system}.default = pkgs.stdenv.mkDerivation rec {
-        pname = "commander";
-        version = "0.1.0";
-
-        src = ./.;
-
-        cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
-          inherit src pname version;
-          hash = "sha256-VKh+iI3w6K+dTxK5DL+7vqKQBMaGQFZZbjS38ONLYSg=";
-        };
-
-        nativeBuildInputs = with pkgs; [
-          rustToolchain
-          meson
-          ninja
-          blueprint-compiler
-          pkg-config
-          rustPlatform.cargoSetupHook
+          pipewire
           rustPlatform.bindgenHook
+          blueprint-compiler
           wrapGAppsHook4
         ];
 
-        buildInputs = with pkgs; [
-          gtk4
-          libadwaita
-          pipewire
-        ];
+        RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
       };
     };
 }
