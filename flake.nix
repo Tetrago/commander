@@ -73,7 +73,7 @@
             ];
 
             useFetchCargoVendor = true;
-            cargoHash = "sha256-0Ves6dNh6h8dcVc8iJ5Jd9w1ey9GDH4dDdEnCAapeAE=";
+            cargoHash = "sha256-oJ1p3b/08964kwjwUX+AG+AZi9KZs6JQ435/8VW2K6c=";
 
             meta.mainProgram = "commander";
           };

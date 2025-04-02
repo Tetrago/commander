@@ -1,9 +1,9 @@
 use crate::audio;
 use crate::audio::Audio;
+use crate::audio::AudioDeviceRow;
 use crate::audio::Device as AudioDevice;
 use crate::audio::DeviceType as AudioDeviceType;
 use crate::audio::Event;
-use crate::audio_device_row::AudioDeviceRow;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib;
@@ -17,7 +17,7 @@ mod imp {
 
     #[derive(Default, glib::Properties, gtk::CompositeTemplate)]
     #[properties(wrapper_type = super::AudioDevicesExpander)]
-    #[template(file = "ui/audio_devices_expander.blp")]
+    #[template(file = "ui/audio/audio_devices_expander.blp")]
     pub struct AudioDevicesExpander {
         #[property(get, construct_only, builder(AudioDeviceType::default()))]
         pub device_type: Cell<AudioDeviceType>,

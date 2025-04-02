@@ -2,15 +2,12 @@ use adw::prelude::*;
 use gtk::glib;
 
 mod audio;
-mod audio_device_row;
-mod audio_devices_expander;
-mod display_group;
-mod monitor_button;
+mod monitors;
 mod window;
 
 fn main() -> glib::ExitCode {
-    audio_devices_expander::AudioDevicesExpander::static_type();
-    display_group::DisplayGroup::static_type();
+    audio::AudioDevicesExpander::static_type();
+    monitors::DisplaySidebarGroup::static_type();
 
     let app = adw::Application::builder()
         .application_id("io.github.tetrago.commander")

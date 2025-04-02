@@ -11,7 +11,7 @@ mod imp {
 
     #[derive(Default, glib::Properties, gtk::CompositeTemplate)]
     #[properties(wrapper_type = super::AudioDeviceRow)]
-    #[template(file = "ui/audio_device_row.blp")]
+    #[template(file = "ui/audio/audio_device_row.blp")]
     pub struct AudioDeviceRow {
         #[template_child]
         pub check_button: TemplateChild<gtk::CheckButton>,

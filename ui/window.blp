@@ -34,9 +34,11 @@ template $CommanderWindow : Adw.ApplicationWindow {
           }
         }
 
-        $DisplayGroup {}
+        $DisplaySidebarGroup {
+          display-settings: display_settings;
+          activated => $on_display_activated(content_stack);
+        }
       };
-
     };
 
     content: Adw.ToolbarView {
@@ -56,7 +58,6 @@ template $CommanderWindow : Adw.ApplicationWindow {
         Adw.ViewStackPage {
           name: "audio";
           title: _("Audio");
-          icon-name: "audio-volume-high-symbolic";
 
           child: Adw.PreferencesPage {
             Adw.PreferencesGroup {
@@ -77,13 +78,7 @@ template $CommanderWindow : Adw.ApplicationWindow {
         Adw.ViewStackPage {
           name: "display";
           title: _("Display");
-          icon-name: "preferences-desktop-display-symbolic";
-
-          child: Adw.PreferencesPage {
-            Adw.PreferencesGroup {
-              title: _("Monitors");
-            }
-          };
+          child: $DisplaySettings display_settings {};
         }
       };
     };

@@ -14,6 +14,12 @@ use std::{
     thread,
 };
 
+mod audio_device_row;
+mod audio_devices_expander;
+
+pub use audio_device_row::*;
+pub use audio_devices_expander::*;
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, glib::Enum)]
 #[enum_type(name = "DeviceType")]
 pub enum DeviceType {
@@ -42,19 +48,21 @@ impl std::hash::Hash for Device {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum Event {
     DeviceAdded(Device),
     DeviceRemoved(Device),
     DefaultDeviceChanged(Device),
 }
 
+#[derive(Clone, Debug)]
 enum Message {
     DeviceAdded(Device),
     DeviceRemoved(u32),
     DefaultDeviceChanged(DeviceType, String),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum Command {
     MakeDefault(Device),
     Terminate,
@@ -136,9 +144,9 @@ impl Audio {
                         }
                     }
 
-                    gtk::glib::ControlFlow::Continue
+                    glib::ControlFlow::Continue
                 } else {
-                    gtk::glib::ControlFlow::Break
+                    glib::ControlFlow::Break
                 }
             }
         });
@@ -295,6 +303,16 @@ impl Audio {
                             match device.device_type {
                                 DeviceType::Sink => "default.audio.sink",
                                 DeviceType::Source => "default.audio.source",
+                            },
+                            Some("Spa:String:JSON"),
+                            Some(&data.to_string()),
+                        );
+
+                        metadata.set_property(
+                            0,
+                            match device.device_type {
+                                DeviceType::Sink => "default.configured.audio.sink",
+                                DeviceType::Source => "default.configured.audio.source",
                             },
                             Some("Spa:String:JSON"),
                             Some(&data.to_string()),

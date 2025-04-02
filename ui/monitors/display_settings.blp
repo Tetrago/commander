@@ -1,0 +1,122 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $DisplaySettings : Adw.PreferencesPage {
+  monitor-scale: bind scale.value;
+  monitor-transform: bind orientation.selected;
+  monitor-disabled: bind switch.active inverted;
+  selected-mode: bind mode.selected;
+
+  Adw.PreferencesGroup {
+    title: bind template.monitor-name;
+
+    Adw.SwitchRow switch {
+      title: _("Enable");
+      subtitle: _("Whether to turn the display on or off");
+      active: bind template.monitor-disabled inverted;
+    }
+
+    Adw.ExpanderRow {
+      title: _("Properties");
+
+      Adw.ActionRow {
+        title: bind template.monitor-make;
+        subtitle: _("Make");
+      }
+
+      Adw.ActionRow {
+        title: bind template.monitor-model;
+        subtitle: _("Model");
+      }
+
+      Adw.ActionRow {
+        title: bind template.monitor-serial;
+        subtitle: _("Serial");
+      }
+    }
+  }
+
+  Adw.PreferencesGroup {
+    visible: bind switch.active;
+    title: _("Options");
+    description: _("Configure display values");
+
+    Adw.ComboRow orientation {
+      title: _("Orientation");
+      selected: bind template.monitor-transform;
+      model: StringList {
+        strings [
+          _("Normal"),
+          _("90°"),
+          _("180°"),
+          _("270°"),
+          _("Normal (flipped)"),
+          _("90° (flipped)"),
+          _("180° (flipped)"),
+          _("270° (flipped)"),
+        ]
+      };
+    }
+
+    Adw.ComboRow mode {
+      title: _("Mode");
+      selected: bind template.monitor-mode;
+      model: bind template.monitor-available-modes;
+    }
+
+    Adw.ExpanderRow {
+      title: _("Position");
+      subtitle: _("The desired position of the display, relative to the scaled dimensions");
+
+      Adw.EntryRow position_x {
+        title: _("X");
+        text: bind template.monitor-x;
+        input-purpose: digits;
+
+        entry-activated => $on_change_x(template);
+      }
+
+      Adw.EntryRow position_y {
+        title: _("Y");
+        text: bind template.monitor-y;
+        input-purpose: digits;
+
+        entry-activated => $on_change_x(template);
+      }
+    }
+
+    Adw.SpinRow scale {
+      title: _("Scale");
+      subtitle: _("Adjust the percentage scale of text and interface elements");
+
+      adjustment: Adjustment {
+        lower: 100;
+        upper: 500;
+        value: bind template.monitor-scale;
+        step-increment: 10;
+      };
+    }
+  }
+
+  Adw.PreferencesGroup {
+    CenterBox {
+      [start]
+      Button {
+        styles ["pill"]
+        label: _("Reset");
+        sensitive: bind template.modified;
+
+        clicked => $reset(template);
+      }
+
+      [end]
+      Button {
+        styles ["pill", "suggested-action"]
+        label: _("Apply");
+        sensitive: bind template.modified;
+
+        clicked => $apply(template);
+      }
+    }
+  }
+}

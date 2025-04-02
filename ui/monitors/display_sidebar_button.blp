@@ -1,0 +1,13 @@
+using Adw 1;
+
+template $DisplaySidebarButton : Adw.ActionRow {
+  title: bind template.monitor-name;
+  activatable: true;
+
+  [suffix]
+  Image icon {
+    icon-name: "video-display-symbolic";
+  }
+
+  activated => $on_activated(template);
+}
