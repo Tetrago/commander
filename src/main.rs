@@ -4,10 +4,13 @@ use gtk::glib;
 mod audio;
 mod audio_device_row;
 mod audio_devices_expander;
+mod display_group;
+mod monitor_button;
 mod window;
 
 fn main() -> glib::ExitCode {
     audio_devices_expander::AudioDevicesExpander::static_type();
+    display_group::DisplayGroup::static_type();
 
     let app = adw::Application::builder()
         .application_id("io.github.tetrago.commander")

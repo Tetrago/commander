@@ -18,6 +18,9 @@ template $CommanderWindow : Adw.ApplicationWindow {
 
       content: Adw.PreferencesPage {
         Adw.PreferencesGroup {
+          title: _("Settings");
+          description: _("General systems settings");
+
           Adw.ActionRow {
             title: _("Audio");
             activatable: true;
@@ -29,19 +32,9 @@ template $CommanderWindow : Adw.ApplicationWindow {
 
             activated => $on_audio_activated(content_stack);
           }
-
-          Adw.ActionRow {
-            title: _("Display");
-            activatable: true;
-
-            [prefix]
-            Image {
-              icon-name: "preferences-desktop-display-symbolic";
-            }
-
-            activated => $on_display_activated(content_stack);
-          }
         }
+
+        $DisplayGroup {}
       };
 
     };
