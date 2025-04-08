@@ -73,7 +73,7 @@
             ];
 
             useFetchCargoVendor = true;
-            cargoHash = "sha256-oJ1p3b/08964kwjwUX+AG+AZi9KZs6JQ435/8VW2K6c=";
+            cargoLock.lockFile = ./Cargo.lock;
 
             meta.mainProgram = "commander";
           };

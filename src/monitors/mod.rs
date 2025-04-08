@@ -80,7 +80,7 @@ impl Drop for Listener {
 pub struct Monitors {
     sender: mpsc::Sender<Terminate>,
     thread: Option<thread::JoinHandle<()>>,
-    monitors: HashMap<u64, Monitor>,
+    monitors: HashMap<String, Monitor>,
     listeners: Rc<RefCell<Vec<Rc<dyn Fn(&Event)>>>>,
 }
 
@@ -102,7 +102,7 @@ impl Monitors {
             let mut monitors = monitors.borrow_mut();
 
             move |elem| {
-                monitors.monitors.insert(elem.id, elem.clone());
+                monitors.monitors.insert(elem.name.clone(), elem.clone());
 
                 monitors
                     .listeners
@@ -125,27 +125,18 @@ impl Monitors {
                                 if let Some(monitor) =
                                     Self::get_monitors().iter().find(|elem| elem.name == name)
                                 {
-                                    monitors.monitors.insert(monitor.id, monitor.clone());
+                                    monitors
+                                        .monitors
+                                        .insert(monitor.name.clone(), monitor.clone());
                                     Some(Event::MonitorAdded(monitor.clone()))
                                 } else {
                                     None
                                 }
                             }
-                            Message::MonitorRemoved(name) => {
-                                if let Some(id) = monitors.monitors.iter().find_map(|elem| {
-                                    if elem.1.name == name {
-                                        Some(*elem.0)
-                                    } else {
-                                        None
-                                    }
-                                }) {
-                                    Some(Event::MonitorRemoved(
-                                        monitors.monitors.remove(&id).unwrap(),
-                                    ))
-                                } else {
-                                    None
-                                }
-                            }
+                            Message::MonitorRemoved(name) => monitors
+                                .monitors
+                                .get(&name)
+                                .map(|monitor| Event::MonitorRemoved(monitor.clone())),
                         } {
                             monitors
                                 .listeners
