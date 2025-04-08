@@ -6,6 +6,25 @@ use gtk::glib;
 use gtk::subclass::prelude::*;
 use std::cell::Cell;
 use std::cell::RefCell;
+use std::sync::OnceLock;
+
+fn run_scripts(name: &str) {
+    static PATH: OnceLock<String> = OnceLock::new();
+    let path = PATH.get_or_init(|| {
+        std::env::var("XDG_DATA_HOME")
+            .map(|var| format!("{}/commander/monitor.d", var))
+            .expect("Could not determine scripts directory")
+    });
+
+    if let Ok(dir) = std::fs::read_dir(path) {
+        for entry in dir {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                let _ = std::process::Command::new(path).arg(name).status();
+            }
+        }
+    }
+}
 
 mod imp {
     use super::*;
@@ -163,7 +182,7 @@ mod imp {
         #[template_callback]
         fn apply(&self) {
             self.update_mode();
-            let monitor = self.monitor.borrow();
+            let monitor = self.monitor.borrow().clone();
 
             let command = if monitor.disabled {
                 format!("keyword monitor {},disable\n", monitor.name)
@@ -181,7 +200,9 @@ mod imp {
                 )
             };
 
+            self.obj().set_monitor(&monitor);
             Monitors::issue(command.as_bytes()).unwrap();
+            run_scripts(&monitor.name);
         }
     }
 
